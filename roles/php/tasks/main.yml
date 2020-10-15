@@ -1,0 +1,45 @@
+---
+- include: Ubuntu.yml
+  when: ansible_distribution == "Ubuntu"
+
+- include: Debian.yml
+  when: ansible_distribution == "Debian"
+
+- name: apt-update && apt dist-upgrade
+  apt:
+    upgrade: dist
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install php{{ php_version }}
+  apt:
+    pkg:
+      - php{{ php_version }}
+      - php{{ php_version }}-cli
+      - php{{ php_version }}-dev
+      - php{{ php_version }}-cgi
+      - php{{ php_version }}-fpm
+      - php{{ php_version }}-mysql
+      - php{{ php_version }}-xml
+      - php{{ php_version }}-xmlrpc
+      - php{{ php_version }}-curl
+      - php{{ php_version }}-imap
+      - php{{ php_version }}-pspell
+      - php{{ php_version }}-gd
+      - php{{ php_version }}-zip
+      - php{{ php_version }}-bcmath
+      - php{{ php_version }}-intl
+      - php{{ php_version }}-mbstring
+      - php{{ php_version }}-memcached
+      - php-imagick
+    state: present
+    update_cache: yes
+
+- name: Enable php module for mysql
+  command: phpenmod pdo_mysql
+
+- name: Copy php.ini config
+  template: src=default.j2 dest=/etc/php/{{ php_version }}/fpm/php.ini
+
+- name: Restart PHP-FPM
+  service: name=php{{php_version}}-fpm state=restarted

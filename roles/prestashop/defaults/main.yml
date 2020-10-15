@@ -1,0 +1,24 @@
+---
+prestashop_check_file_name: "{{ cms_check_file_name }}"
+prestashop_domain: "{{ host_name }}"
+host_alias: "{{ host_name }}"
+prestashop_email: "{{ cms_email }}"
+prestashop_password: "{{ cms_password }}"
+prestashop_db_server: "{{ mysql_host }}"
+
+prestashop_db_name: "{{ project_name }}"
+prestashop_db_user: "{{ project_name }}"
+prestashop_db_password: "{{ mysql_password }}"
+prestashop_db_create: 1
+prestashop_db_clear: 1
+prestashop_db_engine: "InnoDB"
+prestashop_db_prefix: "ps_"
+prestashop_admin_folder_name: "admin_shop"
+prestashop_language: "fr"
+prestashop_country: "fr"
+prestashop_timezone: "localhost"
+prestashop_firstname: "Julien"
+prestashop_lastname: "Toutain"
+prestashop_newsletter: 0
+prestashop_mail_setup: 1
+prestashop_url_download: "https://github.com/PrestaShop/PrestaShop/releases/download/{{ prestashop_version }}/prestashop_{{ prestashop_version }}.zip"

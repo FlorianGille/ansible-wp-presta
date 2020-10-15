@@ -1,0 +1,47 @@
+---
+- name: Installation de {{ selected_cms }}
+  hosts: production
+  gather_facts: true
+  become: yes
+  vars:
+    - wordpress_check_file_name: 'already_install.log'
+    - mysql_host: localhost
+    - php_version: 7.4
+    - cms_check_file_name: deploy.log
+    - prestashop_version: latest
+    - cms_password: admin
+    - cms_email: admin@admin.com
+
+  vars_prompt:
+    - name: "selected_cms"
+      prompt: "What is the CMS ? (wordpress or prestashop)"
+      default: "prestashop"
+      private: no
+
+    - name: "project_name"
+      prompt: "What is the destination folder of the project ?"
+      default: "myblog"
+      private: no
+
+    - name: "host_name"
+      prompt: "The host nampe ?"
+      default: "localhost"
+      private: no
+
+    - name: "mysql_user"
+      prompt: "The db user ?"
+      default: "root"
+      private: no
+
+    - name: "mysql_password"
+      prompt: "The db password ?"
+      default: ""
+      private: yes
+
+
+
+  roles:
+    - { role: wordpress, when: selected_cms == 'wordpress' }
+    - { role: prestashop, when: selected_cms == 'prestashop' }
+
+...

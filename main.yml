@@ -1,0 +1,43 @@
+---
+- name: This playbook configure a LAMP environment
+  hosts: production
+  gather_facts: true
+  become: yes
+  vars:
+    - mysql_host: localhost
+    - php_version: 7.4
+    - cms_check_file_name: deploy.log
+    - prestashop_version: latest
+    - cms_password: admin
+    - cms_email: admin@admin.com
+  vars_prompt:
+    - name: "cms"
+      prompt: "What is the CMS of the project ? (wordpress or prestashop)"
+      default: "prestashop"
+      private: no
+
+    - name: "project_name"
+      prompt: "What is the destination folder of the project ?"
+      default: "myshop"
+      private: no
+
+    - name: "host_name"
+      prompt: "The host name ?"
+      default: "myshop.mondomaine.fr"
+      private: no
+
+    - name: "mysql_user"
+      prompt: "The db user ?"
+      default: "root"
+      private: no
+
+    - name: "mysql_password"
+      prompt: "The db password ?"
+      default: ""
+      private: yes
+
+  roles:
+    - role: wordpress
+      when: cms == "wordpress"
+    - role: prestashop
+      when: cms == "prestashop"

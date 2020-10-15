@@ -1,0 +1,17 @@
+- name: Install apt packages
+  apt:
+    pkg: 'apt-transport-https'
+    state: present
+
+- name: Install sury key
+  apt_key:
+    url: 'https://packages.sury.org/php/apt.gpg'
+    state: present
+
+# Add specified repository into sources list using specified filename.
+- name: Add debian PHP sury repo to apt
+  apt_repository:
+    repo: "deb https://packages.sury.org/php/ {{ ansible_distribution_release }} main"
+    state: "present"
+    update_cache: "yes"
+    filename: "php-sury"

@@ -1,0 +1,6 @@
+- name: Install php extension
+  apt:
+    state: present
+    pkg:
+      - php7.3-gd
+      - php-ssh2

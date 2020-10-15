@@ -1,0 +1,174 @@
+---
+- name: Test if a previous setup exist
+  stat:
+    path: "/var/www/{{ host_name }}/{{ prestashop_check_file_name }}"
+  register: prestashop_status
+
+- name: Create dest
+  file: state=directory name=/var/www/{{ host_name }}
+
+- name: Call to github api for get latest release information
+  uri:
+    url: https://api.github.com/repos/PrestaShop/PrestaShop/releases/latest
+    return_content: true
+  register: output
+  when: prestashop_version == "latest"
+
+- name: Assign latest url of zipball from github to variable prestashop_url_download
+  set_fact:
+    prestashop_url_download: "{{ output.json.assets[0].browser_download_url }}"
+  when: prestashop_version == "latest"
+
+# - debug: msg="{{ output.json.assets[0].browser_download_url }}}}"
+
+- name: Download Prestashop {{  prestashop_url_download }}
+  unarchive:
+    src: "{{ prestashop_url_download }}"
+    dest: "/var/www/{{ host_name }}/"
+    remote_src: true
+    owner: www-data
+    group: www-data
+  when: prestashop_status.stat.exists == false
+
+- name: Unzip prestashop.zip
+  unarchive:
+    src: "/var/www/{{ host_name }}/prestashop.zip"
+    dest: "/var/www/{{ host_name }}/"
+    remote_src: true
+    owner: www-data
+    group: www-data
+  when: prestashop_status.stat.exists == false
+
+- name: Deletion of prestashop.zip
+  file:
+    state: absent
+    path: "/var/www/{{ host_name }}/prestashop.zip"
+  when: prestashop_status.stat.exists == false
+
+- name: Setup of prestashop over CLI
+  become: yes
+  # vars:
+  #   # mysql_password: "{{ lookup('file', '~/BDD.pwd') }}"
+  #   prestashop_password: "{{ lookup('password', '/dev/null length:12 chars:ascii_letters') }}"
+  command: "php{{ php_version }} index_cli.php --domain={{ prestashop_domain }} --db_create={{ prestashop_db_create }} --db_clear={{ prestashop_db_clear }} --db_server={{ prestashop_db_server }} --db_name={{ prestashop_db_name }} --db_user={{ prestashop_db_user }} --db_password={{ prestashop_db_password }} --engine={{ prestashop_db_engine }} --prefix={{ prestashop_db_prefix }} --language={{ prestashop_language }} --country={{ prestashop_country }} --timezone={{ prestashop_timezone }} --firstname={{ prestashop_firstname }} --lastname={{ prestashop_lastname }} --password={{ prestashop_password }} --email={{ prestashop_email }} --newsletter={{ prestashop_newsletter }} --send_email={{ prestashop_mail_setup }}"
+  args:
+    chdir:  "/var/www/{{ host_name }}/install"
+  when: prestashop_status.stat.exists == false
+
+- name: Deletion of install folder of PrestaShop.
+  file:
+    path: "/var/www/{{ host_name }}/install"
+    state: absent
+
+- name: Rename admin folder of prestashop
+  command: "mv /var/www/{{ host_name }}/admin /var/www/{{ host_name }}/{{ prestashop_admin_folder_name }}"
+  when: prestashop_status.stat.exists == false
+
+- name: Create log file after setup for avoiding overwrite
+  copy:
+    content: "PrestaShop {{ prestashop_version }} setup, WARNING if you delete this archive next time ansible deploy prestashop all data will be overwrited"
+    dest: "/var/www/{{ host_name }}/{{ prestashop_check_file_name }}"
+  when: prestashop_status.stat.exists == false
+
+- name: Change ownership of Prestashop installation
+  file: path=/var/www/{{ host_name }}/ owner=www-data group=www-data state=directory recurse=yes
+
+- name: Copy apache config
+  template: src=default.j2 dest=/etc/apache2/sites-available/{{ host_name }}.conf
+
+- name: Create link into sites-enabled
+  file: state=link src=/etc/apache2/sites-available/{{ host_name }}.conf dest=/etc/apache2/sites-enabled/{{ host_name }}.conf
+
+- name: Remove default apache vhost
+  file: state=absent path=/etc/apache2/sites-enabled/000-default.conf
+
+- name: Remove index.html from apache default
+  file: state=absent path=/var/www/html/index.html
+
+# this module pymysql (pip) or python3-mysqldb (apt) is required to execute next task
+# - name: create database for wordpress site
+#   mysql_db:
+#     name: "{{ project_name }}"
+#     login_user: "{{ mysql_user }}"
+#     login_password: "{{ mysql_password }}"
+
+- name: Enable rewrite module
+  apache2_module:
+    state: present
+    name: rewrite
+
+- name: Enable proxy_fcgi module
+  apache2_module:
+    state: present
+    name: proxy_fcgi
+
+- name: Enable alias module
+  apache2_module:
+    state: present
+    name: alias
+
+# - name: enable php"{{ php_version }}" module
+#   apache2_module:
+#     state: present
+#     name: "php{{ php_version }}"
+
+- name: Restart apache2
+  service: name=apache2 state=restarted
+
+- name: Create a debug directory if it does not exist
+  file:
+    path: /var/www/{{ host_name }}/debug/
+    state: directory
+    mode: '0755'
+
+- name: Download Prestashop phpinfo page
+  unarchive:
+    src: "https://github.com/PrestaShop/php-ps-info/archive/v1.1.tar.gz"
+    dest: "/var/www/{{ host_name }}/debug/"
+    extra_opts: [--strip-components=1]
+    remote_src: true
+    owner: www-data
+    group: www-data
+  when: prestashop_status.stat.exists == false
+
+- name: Move page php-ps-info
+  command: "mv /var/www/{{ host_name }}/debug/phppsinfo.php /var/www/{{ host_name }}/host_info.php"
+  when: prestashop_status.stat.exists == false
+
+- name: Fix auth with .htaccess of prestashop on host_info.php page
+  lineinfile:
+    path: /var/www/{{ host_name }}/.htaccess
+    line: 'CGIPassAuth On'
+
+- name: Delete debug folder
+  file:
+    path: /var/www/{{ host_name }}/debug
+    state: absent
+
+- name: Delete INSTALL.txt
+  file:
+    path: /var/www/{{ host_name }}/INSTALL.txt
+    state: absent
+
+- name: Delete Install_PrestaShop.html
+  file:
+    path: /var/www/{{ host_name }}/Install_PrestaShop.html
+    state: absent
+
+- name: Install prestashop_console
+  git:
+    repo: 'https://github.com/nenes25/prestashop_console.git'
+    dest: /var/www/{{ host_name }}/console
+
+- name: Composer install prestashop_console
+  composer:
+    command: install
+    working_dir: /var/www/{{ host_name }}/console
+
+- name: Display prestashop BO Credentials
+  debug:
+    msg: "Prestashop BO login/pwd {{ prestashop_email }}/{{ prestashop_password }} and URL of BO is : http://{{ host_name }}/{{ prestashop_admin_folder_name }}"
+
+- name: Display BDD Credentials
+  debug:
+    msg: "BDD login/pwd {{ mysql_user }}/{{ mysql_password }}"
